@@ -28,8 +28,10 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentB
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -144,8 +146,43 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        private static class PointStats {
+            long NONE;
+            long IF;
+            long ELSE;
+            long BOTH;
+
+            public String toString() {
+                return "NONE: " + NONE + " IF: " + IF + " ELSE: " + ELSE + " BOTH: " + BOTH;
+            }
+        }
+
+        private Map<String, PointStats> reduce() {
+            Map<String, PointStats> result = new HashMap<>();
+
+            for (Entry<String, Point> e : pointMap.entrySet()) {
+                String lexPos = e.getKey().split("\n")[0];
+                PointStats stats = result.compute(lexPos, (k, v) -> v == null ? new PointStats() : v);
+                switch (e.getValue().getBranchState()) {
+                    case NONE:
+                        stats.NONE++;
+                        break;
+                    case IF:
+                        stats.IF++;
+                        break;
+                    case ELSE:
+                        stats.ELSE++;
+                        break;
+                    case BOTH:
+                        stats.BOTH++;
+                        break;
+                }
+            }
+            return result;
+        }
+
         public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+            return reduce().entrySet().stream().map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
         }
 
         public synchronized void dumpAccessTable() {
