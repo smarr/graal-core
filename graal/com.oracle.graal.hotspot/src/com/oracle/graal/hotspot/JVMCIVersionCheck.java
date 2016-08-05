@@ -79,7 +79,13 @@ class JVMCIVersionCheck {
                 start += "-jvmci-".length();
                 int end = vmVersion.indexOf('.', start);
                 if (end > 0) {
-                    int major = Integer.parseInt(vmVersion.substring(start, end));
+                    String versionPart = vmVersion.substring(start, end);
+                    if (versionPart.startsWith("unknown")) {
+                        // this seems to be a custom built one, let's be
+                        // optimistic and assume it works
+                        return;
+                    }
+                    int major = Integer.parseInt(versionPart);
                     start = end + 1;
                     end = start;
                     while (end < vmVersion.length() && Character.isDigit(vmVersion.charAt(end))) {
